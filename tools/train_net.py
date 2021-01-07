@@ -18,6 +18,8 @@ You may want to write your own script with your datasets and other customization
 import logging
 import os
 from collections import OrderedDict
+import sys
+import traceback
 import torch
 from torch.nn.parallel import DistributedDataParallel
 
@@ -206,14 +208,34 @@ def main(args):
     return trainer.train()
 
 
+def recover(args):
+    not_finished = True
+    attempt = 0
+    args.resume = True
+    while not_finished and attempt < args.max_attempts:
+        try:
+            launch(
+                main,
+                args.num_gpus,
+                num_machines=args.num_machines,
+                machine_rank=args.machine_rank,
+                dist_url=args.dist_url,
+                args=(args,),
+            )
+            not_finished = False
+        except:
+            print("Recovering after failure, attempt = %s" % attempt)
+            print(sys.exc_info())
+            print(traceback.print_exc())
+            attempt += 1
+            pass
+
+
 if __name__ == "__main__":
-    args = default_argument_parser().parse_args()
+    parser = default_argument_parser()
+    parser.add_argument(
+        '--max_attempts', default=1, type=int,
+        help='max attempts for recovery')
+    args = parser.parse_args()
     print("Command Line Args:", args)
-    launch(
-        main,
-        args.num_gpus,
-        num_machines=args.num_machines,
-        machine_rank=args.machine_rank,
-        dist_url=args.dist_url,
-        args=(args,),
-    )
+    recover(args)
