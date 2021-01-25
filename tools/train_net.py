@@ -195,6 +195,10 @@ def main(args):
             res.update(Trainer.test_with_TTA(cfg, model))
         return res
 
+    if args.tpu:
+        import torch_xla.core.xla_model as xm
+        _ = xm.xla_device()
+
     """
     If you'd like to do anything fancier than the standard training logic,
     consider writing your own training loop or subclassing the trainer.
@@ -236,6 +240,9 @@ if __name__ == "__main__":
     parser.add_argument(
         '--max_attempts', default=1, type=int,
         help='max attempts for recovery')
+    parser.add_argument('--tpu', dest='tpu', action='store_true')
+    parser.add_argument('--no-tpu', dest='tpu', action='store_false')
+    parser.set_defaults(tpu=False)
     args = parser.parse_args()
     print("Command Line Args:", args)
     recover(args)
